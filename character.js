@@ -305,7 +305,7 @@ class Berzerker extends Character {
 
 class Assassin extends Character {
     constructor(name) {
-        super(name, 6, 6, 20)
+        super(name, 8, 6, 20)
         console.log(`Introducing the new player ${this.name}`)
     }
 
@@ -342,7 +342,8 @@ class Wizard extends Character {
     castFireBall(victim) {
         if (this.checkEnoughMP(25)) {
             console.log(`${this.name} uses Fireball on ${victim.name}`);
-            this.dealDamage(victim)
+            this.consumeMP(25);
+            this.dealDamage(victim, 7);
         }
     }
 }
@@ -369,8 +370,8 @@ class Game {
         console.log(`Starting turn ${this.turn}`)
        
         let playersYetToPlay = this.alivePlayersArray;
-        // As long as there are players yet to play, then the turn goes on
-        while (playersYetToPlay.length != 0) {
+        // As long as there are players yet to play and at least 2 players, then the turn goes on
+        while (playersYetToPlay.length > 0 && this.alivePlayersArray.length > 1) {
 
             // --- PLAYER SELECTION AND LIST UPDATES ---
 
@@ -392,29 +393,24 @@ class Game {
             let spell = 0
             if (playingPlayer.pendingAttack.length>0) {
                 spell = 3
-                alert(`An attack was pending: ${player.pendingAttack}`)
+                alert(`An attack was pending: ${playingPlayer.pendingAttack[0]}`)
             }
             else { // Normal behavior, pick 1 for basic attack or 2 for special attack
-                spell = parseInt(prompt("Pick an action: 1 for Basic Attack, 2 for Special Attack"));
+                spell = parseInt(prompt(`Player ${playingPlayer.name}. Pick an action: 1 for Basic Attack, 2 for Special Attack`));
                 while (spell !== 1 && spell !== 2) {
-                    spell = parseInt(prompt("Wrong input. Pick an action: 1 for Basic Attack, 2 for Special Attack"));
+                    spell = parseInt(prompt(`Wrong Input. Player ${playingPlayer.name}. Pick an action: 1 for Basic Attack, 2 for Special Attack`));
                 }
             };
             
             // VICTIM SELECTION
-            let possibleVictimsIndex = [];
-            for (var index=0; index < canBeAttacked.length; index++) { // Restriction on the victim choice
-                possibleVictimsIndex.push(index)
-            } 
-
-            let victimIndex = parseInt(prompt(`Choose a victim with a number between ${possibleVictimsIndex[0]} and ${possibleVictimsIndex.slice(-1)}`))
-            while (!possibleVictimsIndex.includes(victimIndex)) {
-                victimIndex = parseInt(prompt(`Wrong input. Pick a victim with a number between ${possibleVictimsIndex[0]} and ${possibleVictimsIndex.slice(-1)}`))
+            let victimIndex = parseInt(prompt(`Choose a victim:\n${canBeAttacked.map((option, index) => `${index+1}. ${option.name}`).join("\n")}`));
+            while (isNaN(victimIndex) || victimIndex > canBeAttacked.length || victimIndex == 0) { // Validate the user input
+                victimIndex = parseInt(prompt(`Choose a victim:\n${canBeAttacked.map((option, index) => `${index+1}. ${option.name}`).join("\n")}`));
             }
-            
-            let victim = canBeAttacked[victimIndex]
 
-            alert(`${victim.name} has been chosen`)
+            let victim = canBeAttacked[victimIndex-1];
+
+            alert(`${victim.name} is the victim`)
 
             // ATTACK EXECUTION
             switch (spell) {
@@ -454,7 +450,6 @@ class Game {
 
             // --- END OF ATTACK PHASE ---
 
-
             // --- UPDATING THE LISTS ---
             // At the end of each player's turn:
             this.alivePlayersArray = this.keepAlivePlayers(this.alivePlayersArray) // update this.alivePlayersArray to account for any dead player during the turn
@@ -463,13 +458,16 @@ class Game {
             console.log(`--- This is the end of ${playingPlayer.name}'s turn ---`)
 
             // --- END PLAYER'S TURN ---
-            
+
+            // Check win condition (if only one player alive)
+            if (this.alivePlayersArray.length===1) {
+                return;
+            }    
         }
 
-        
-        // --- END OF ATTACK PHASE ---
+        // --- END OF TURN ---
 
-        console.log(`--- End of attack phase for ${this.turn} ---`)
+        console.log(`--- All the alive players have played on turn ${this.turn} ---`)
         console.log(`Now resetting the parameters to prepare the next turn`)
         // At the end of each turn, it should:
         // - delete all the buffs and reactions for the active turn (0)
@@ -485,11 +483,58 @@ class Game {
     }
 
     launchGame() {
-        // Win condition : if only one player remaining OR turnLeft reach 0
+        // Win condition : if only one player remaining OR turnLeft reach 0. Otherwise, keep adding new turns.
         while (this.turnsLeft>0 && this.alivePlayersArray.length>1) {
             alert(`This is turn ${this.turn} and there is ${this.turnsLeft} turns left`)
             this.launchNewTurn();
         }
+
+        const winners = this.alivePlayersArray.length === 1 ? this.alivePlayersArray : this.findPlayersWithHighestHP();
+        this.updatePlayersStatus(winners);
+        this.logWinners(winners);
+    }
+
+    logWinners(winners) {
+        if (winners.length === 1) {
+            console.log(`${winners[0].name} is the winner!`);
+        } else {
+            console.log("The winners are:");
+            winners.forEach(winner => {
+                console.log(winner.name);
+            });
+        }
+    }
+
+    findPlayersWithHighestHP() {
+        // This function will return an array containing the players with the highest health points
+        let maxHP = -Infinity;
+        let charactersWithMaxHP = [];
+
+        this.alivePlayersArray.forEach(player => {
+            if (player.hp > maxHP) {
+                maxHP = player.hp;
+                charactersWithMaxHP[player];
+            } else if (player.hp === maxHP) {
+                charactersWithMaxHP.push(player);
+            }
+        });
+
+        return charactersWithMaxHP;
+    }
+
+    updatePlayersStatus(winnersArray) {
+        // Take two arrays as arguments, will turn the status of the players in the first one to winner, and to loser in the second array
+        winnersArray.map((winner) => {
+            console.log(`${winner.name} is a winner`)
+            winner.status = "winner"
+        })
+
+        let losersArray = this.playersArray.filter((player) => !winnersArray.includes(player))
+
+        losersArray.map((loser) => {
+            console.log(`${loser.name} is a loser`)
+            loser.status = "loser"
+        });
     }
 
     keepAlivePlayers(playersArray) {
@@ -517,14 +562,14 @@ class Game {
 
 }
 
-// let game = new Game(turns=2)
-// game.launchGame()
+let game = new Game(turns=4)
+game.launchGame()
 
-let carl = new Berzerker("Carl")
-let moana = new Paladin("Moana")
-carl.castRage()
-carl.buff = carl.deleteCurrentTurnEffects(carl.buff)
-carl.buff = carl.updateBuffTurns(carl.buff)
-carl.dealDamage(moana)
-// carl.triggerShadowHit(moana)
-moana.castHealingLighting(carl)
+// let carl = new Berzerker("Carl")
+// let moana = new Paladin("Moana")
+// carl.castRage()
+// carl.buff = carl.deleteCurrentTurnEffects(carl.buff)
+// carl.buff = carl.updateBuffTurns(carl.buff)
+// carl.dealDamage(moana)
+// // carl.triggerShadowHit(moana)
+// moana.castHealingLighting(carl)
