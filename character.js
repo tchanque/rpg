@@ -1,7 +1,3 @@
-// Character 
-// Attributes: [hp, dmg, mana, status]
-// Method: take Damage, dealDamage
-
 class Character {
     constructor(name, hp, dmg, mp) {
         this.name = name;
@@ -71,7 +67,7 @@ class Character {
         this.printStatus()
 
         // now should trigger all the reactions on hit for the receiver if he/she has any:
-        if (this.reactionOnHit.hasOwnProperty("0")) {
+        if (this.reactionOnHit["0"]) {
             let reactionsList = this.reactionOnHit["0"] // is the array containing all the couples {reaction: effect} (hash)
             
             let reactionNames = [];
@@ -183,7 +179,7 @@ class Character {
             effectsJSON = Object.fromEntries(
                 Object.entries(effectsJSON).filter(([key, value]) => key !== "0")
             );
-            // Object.keys(effectsJSON).filter(objKey => objKey!== "0");
+
             console.log(`${this.name}'s effects for the current turn have been destroyed`);
             console.log(`The new JSON after dropping current turn effects : ${JSON.stringify(effectsJSON, null, 2)}`)
         } else {
@@ -356,9 +352,9 @@ class Game {
 
         this.playersArray = [
             new Fighter("Grace"), 
-            // new Paladin("Ulder"),
+            new Paladin("Ulder"),
             // new Monk("Moana"),
-            // new Berserker("Draven")
+            // new Berserker("Draven"),
             new Assassin("Carl")
         ];
         this.alivePlayersArray = this.playersArray
@@ -368,7 +364,9 @@ class Game {
         // At the start of a turn
         console.log("*".repeat(20))
         console.log(`Starting turn ${this.turn}`)
-       
+        
+        this.watchStats()
+
         let playersYetToPlay = this.alivePlayersArray;
         // As long as there are players yet to play and at least 2 players, then the turn goes on
         while (playersYetToPlay.length > 0 && this.alivePlayersArray.length > 1) {
@@ -376,8 +374,7 @@ class Game {
             // --- PLAYER SELECTION AND LIST UPDATES ---
 
             // Pick a random player in this list
-            // let playingPlayer = this.randomPlayer(playersYetToPlay)
-            let playingPlayer = playersYetToPlay[0] // Select the first player of the list for test purpose
+            let playingPlayer = this.randomPlayer(playersYetToPlay)
             playersYetToPlay = playersYetToPlay.filter((player) => player!= playingPlayer) // Update the list by removing the playing player
             let canBeAttacked = this.alivePlayersArray.filter((player) => player != playingPlayer) // Define an array of players who can be attacked (everyone but the playing player)
             
@@ -393,7 +390,7 @@ class Game {
             let spell = 0
             if (playingPlayer.pendingAttack.length>0) {
                 spell = 3
-                alert(`An attack was pending: ${playingPlayer.pendingAttack[0]}`)
+                alert(`An attack was pending: ${playingPlayer.pendingAttack[0].toString()}`)
             }
             else { // Normal behavior, pick 1 for basic attack or 2 for special attack
                 spell = parseInt(prompt(`Player ${playingPlayer.name}. Pick an action: 1 for Basic Attack, 2 for Special Attack`));
@@ -403,12 +400,12 @@ class Game {
             };
             
             // VICTIM SELECTION
-            let victimIndex = parseInt(prompt(`Choose a victim:\n${canBeAttacked.map((option, index) => `${index+1}. ${option.name}`).join("\n")}`));
+            let victimIndex = parseInt(prompt(`Choose a victim:\n${canBeAttacked.map((option, index) => `${index+1}. ${option.name} (${option.hp} HP)`).join("\n")}`));
             while (isNaN(victimIndex) || victimIndex > canBeAttacked.length || victimIndex == 0) { // Validate the user input
-                victimIndex = parseInt(prompt(`Choose a victim:\n${canBeAttacked.map((option, index) => `${index+1}. ${option.name}`).join("\n")}`));
+                victimIndex = parseInt(prompt(`Choose a victim:\n${canBeAttacked.map((option, index) => `${index+1}. ${option.name} (${option.hp} HP)`).join("\n")}`));
             }
 
-            let victim = canBeAttacked[victimIndex-1];
+            let victim = canBeAttacked[victimIndex-1]; // decrement by 1 to fit the position (real index) in the array
 
             alert(`${victim.name} is the victim`)
 
@@ -560,9 +557,13 @@ class Game {
         })
     }
 
+    watchStats() {
+        console.log(`List of players:\n${this.playersArray.map((player, index) => `${index+1}. ${player.name} (class ${player.constructor.name}) with ${player.hp} HP, ${player.mp} MP`).join("\n")}`);
+    }
+
 }
 
-let game = new Game(turns=4)
+let game = new Game(turns=10)
 game.launchGame()
 
 // let carl = new Berzerker("Carl")
